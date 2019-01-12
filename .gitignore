@@ -1,5 +1,7 @@
 # User-specific stuff
 .idea
+local.properties
+
 .idea/**/workspace.xml
 .idea/**/tasks.xml
 .idea/**/dictionaries

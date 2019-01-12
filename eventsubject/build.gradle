@@ -1,0 +1,37 @@
+plugins {
+    id 'java'
+    id "com.jfrog.bintray" version "1.4"
+    id "com.github.dcendents.android-maven" version "2.1"
+}
+
+sourceCompatibility = 1.8
+
+dependencies {
+    implementation "io.reactivex.rxjava2:rxjava:2.2.0"
+    testImplementation 'junit:junit:4.12'
+}
+
+ext {
+    bintrayRepo = "EventSubject"
+    bintrayName = "EventSubject"
+    libraryName = "eventsubject"
+
+    publishedGroupId = "me.khol"
+    artifact = "eventsubject"
+    libraryVersion = "1.0.0"
+
+    libraryDescription = "Event Subject for RxJava"
+    siteUrl = "https://github.com/Antimonit/EventSubject"
+    gitUrl = "https://github.com/Antimonit/EventSubject.git"
+
+    developerId = "antimonit"
+    developerName = "David Khol"
+    developerEmail = "david@khol.me"
+
+    licenseName = "The Apache Software License, Version 2.0"
+    licenseUrl = "http://www.apache.org/licenses/LICENSE-2.0.txt"
+    allLicenses = ["Apache-2.0"]
+}
+
+apply from: "https://raw.githubusercontent.com/nuuneoi/JCenter/master/bintrayv1.gradle"
+apply from: "https://raw.githubusercontent.com/nuuneoi/JCenter/master/installv1.gradle"

@@ -1,23 +1,11 @@
-plugins {
-    id 'java'
+buildscript {
+    repositories {
+        jcenter()
+    }
 }
 
-group 'me.khol'
-version '1.0-SNAPSHOT'
-
-sourceCompatibility = 1.8
-
-test {
-    useJUnit()
-    maxHeapSize = '1G'
-}
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    implementation "io.reactivex.rxjava2:rxjava:2.2.0"
-
-    testImplementation 'junit:junit:4.12'
+allprojects {
+    repositories {
+        mavenCentral()
+    }
 }
