@@ -1,3 +1,5 @@
+[ ![Download](https://api.bintray.com/packages/antimonit/EventSubject/EventSubject/images/download.svg) ](https://bintray.com/antimonit/EventSubject/EventSubject/_latestVersion)
+
 # EventSubject
 
 A Subject similar to <a href="http://reactivex.io/RxJava/javadoc/io/reactivex/subjects/UnicastSubject.html">**UnicastSubject**</a>
@@ -14,3 +16,11 @@ If more than one **Observer** attempts to subscribe to this **EventSubject** at 
 **IllegalStateException**.
 
 All other properties of this **EventSubject** are the same as of **UnicastSubject**.
+
+## Dependency
+Library can be added as a dependency from `jcenter` repository:
+```
+dependencies {
+    implementation 'cz.khol:eventsubject:1.0.0'
+}
+```
