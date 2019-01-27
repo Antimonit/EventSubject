@@ -21,6 +21,6 @@ All other properties of this **EventSubject** are the same as of **UnicastSubjec
 Library can be added as a dependency from `jcenter` repository:
 ```
 dependencies {
-    implementation 'cz.khol:eventsubject:1.0.0'
+    implementation 'me.khol:eventsubject:1.0.0'
 }
 ```
