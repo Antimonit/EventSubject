@@ -95,7 +95,7 @@ public final class EventSubject<T> extends Subject<T> {
     final SpscLinkedArrayQueue<T> queue;
 
     /** The single Observer. */
-    final AtomicReference<Observer<? super T>> actual;
+    final AtomicReference<Observer<? super T>> downstream;
 
     /** The optional callback when the Subject gets cancelled or terminates. */
     final AtomicReference<Runnable> onTerminate;
@@ -206,7 +206,7 @@ public final class EventSubject<T> extends Subject<T> {
         this.queue = new SpscLinkedArrayQueue<T>(ObjectHelper.verifyPositive(capacityHint, "capacityHint"));
         this.onTerminate = new AtomicReference<Runnable>();
         this.delayError = delayError;
-        this.actual = new AtomicReference<Observer<? super T>>();
+        this.downstream = new AtomicReference<Observer<? super T>>();
     }
 
     /**
@@ -234,15 +234,15 @@ public final class EventSubject<T> extends Subject<T> {
         this.queue = new SpscLinkedArrayQueue<T>(ObjectHelper.verifyPositive(capacityHint, "capacityHint"));
         this.onTerminate = new AtomicReference<Runnable>(ObjectHelper.requireNonNull(onTerminate, "onTerminate"));
         this.delayError = delayError;
-        this.actual = new AtomicReference<Observer<? super T>>();
+        this.downstream = new AtomicReference<Observer<? super T>>();
     }
 
     @Override
     protected void subscribeActual(Observer<? super T> observer) {
-	    if (actual.get() == null && actual.compareAndSet(null, observer)) {
+	    if (downstream.get() == null && downstream.compareAndSet(null, observer)) {
 		    wip = new EventQueueDisposable();
             observer.onSubscribe(wip);
-            actual.lazySet(observer); // full barrier in drain
+            downstream.lazySet(observer); // full barrier in drain
             drain();
         } else {
             EmptyDisposable.error(new IllegalStateException("Only a single observer allowed."), observer);
@@ -257,9 +257,9 @@ public final class EventSubject<T> extends Subject<T> {
     }
 
     @Override
-    public void onSubscribe(Disposable s) {
+    public void onSubscribe(Disposable d) {
         if (done) {
-            s.dispose();
+            d.dispose();
         }
     }
 
@@ -370,7 +370,7 @@ public final class EventSubject<T> extends Subject<T> {
     }
 
     void errorOrComplete(Observer<? super T> a) {
-        actual.lazySet(null);
+        downstream.lazySet(null);
         Throwable ex = error;
         if (ex != null) {
             a.onError(ex);
@@ -382,7 +382,7 @@ public final class EventSubject<T> extends Subject<T> {
     boolean failedFast(final SimpleQueue<T> q, Observer<? super T> a) {
         Throwable ex = error;
         if (ex != null) {
-            actual.lazySet(null);
+            downstream.lazySet(null);
             q.clear();
             a.onError(ex);
             return true;
@@ -396,7 +396,7 @@ public final class EventSubject<T> extends Subject<T> {
             return;
         }
 
-        Observer<? super T> a = actual.get();
+        Observer<? super T> a = downstream.get();
         int missed = 1;
 
         for (;;) {
@@ -415,13 +415,13 @@ public final class EventSubject<T> extends Subject<T> {
                 break;
             }
 
-            a = actual.get();
+            a = downstream.get();
         }
     }
 
     @Override
     public boolean hasObservers() {
-        return actual.get() != null;
+        return downstream.get() != null;
     }
 
     @Override
@@ -479,10 +479,12 @@ public final class EventSubject<T> extends Subject<T> {
             if (!disposed) {
                 disposed = true;
 
-                actual.lazySet(null);
+                downstream.lazySet(null);
                 if (wip.getAndIncrement() == 0) {
-                    actual.lazySet(null);
-                    queue.clear();
+                    downstream.lazySet(null);
+                    if (!enableOperatorFusion) {
+                        queue.clear();
+                    }
                 }
             }
         }
