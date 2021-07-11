@@ -1,4 +1,4 @@
-[ ![Download](https://api.bintray.com/packages/antimonit/EventSubject/EventSubject/images/download.svg) ](https://bintray.com/antimonit/EventSubject/EventSubject/_latestVersion)
+[ ![Download](https://maven-badges.herokuapp.com/maven-central/io.github.antimonit/eventsubject/badge.svg) ](https://search.maven.org/artifact/io.github.antimonit/eventsubject/1.1.0/jar)
 
 # EventSubject
 
@@ -52,9 +52,9 @@ subscribed already, the Observer attempting to subscribe will receive an `Illega
 All other properties of this `EventSubject` are the same as of `UnicastSubject`.
 
 ## Dependency
-Library can be added as a dependency from `jcenter` repository:
+Library can be added as a dependency from `mavenCentral` repository:
 ```
 dependencies {
-    implementation 'me.khol:eventsubject:1.0.0'
+    implementation 'io.github.antimonit:eventsubject:1.1.0'
 }
 ```
