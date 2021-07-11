@@ -1,23 +1,22 @@
 package me.khol.reactive.subjects;
 
-import io.reactivex.annotations.Nullable;
-import io.reactivex.annotations.NonNull;
-import io.reactivex.plugins.RxJavaPlugins;
-
+import java.util.Objects;
 import java.util.concurrent.atomic.*;
 
-import io.reactivex.*;
-import io.reactivex.annotations.CheckReturnValue;
-import io.reactivex.disposables.Disposable;
-import io.reactivex.internal.disposables.EmptyDisposable;
-import io.reactivex.internal.functions.ObjectHelper;
-import io.reactivex.internal.fuseable.SimpleQueue;
-import io.reactivex.internal.observers.BasicIntQueueDisposable;
-import io.reactivex.internal.queue.SpscLinkedArrayQueue;
-import io.reactivex.subjects.Subject;
+import io.reactivex.rxjava3.annotations.*;
+import io.reactivex.rxjava3.core.Observer;
+import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.internal.disposables.EmptyDisposable;
+import io.reactivex.rxjava3.internal.functions.*;
+import io.reactivex.rxjava3.internal.fuseable.SimpleQueue;
+import io.reactivex.rxjava3.internal.observers.BasicIntQueueDisposable;
+import io.reactivex.rxjava3.internal.queue.SpscLinkedArrayQueue;
+import io.reactivex.rxjava3.internal.util.ExceptionHelper;
+import io.reactivex.rxjava3.plugins.RxJavaPlugins;
+import io.reactivex.rxjava3.subjects.Subject;
 
 /**
- * A Subject similar to {@link io.reactivex.subjects.UnicastSubject UnicastSubject} in a sense that
+ * A Subject similar to {@link io.reactivex.rxjava3.subjects.UnicastSubject UnicastSubject} in a sense that
  * it allows only one {@link Observer} to be subscribed at a time but when the {@code Observer}
  * is unsubscribed, another one is allowed to resubscribe to this subject again.
  * <p>
@@ -52,7 +51,7 @@ import io.reactivex.subjects.Subject;
  * If more than one {@code Observer} attempts to subscribe to this {@code EventSubject} at the same
  * time, they will receive an {@code IllegalStateException}.
  * <p>
- * All other properties of this {@code EventSubject} are the same as of {@link io.reactivex.subjects.UnicastSubject}.
+ * All other properties of this {@code EventSubject} are the same as of {@link io.reactivex.rxjava3.subjects.UnicastSubject}.
  * <p>
  * Example usage:
  * <pre><code>
@@ -124,7 +123,7 @@ public final class EventSubject<T> extends Subject<T> {
     @CheckReturnValue
     @NonNull
     public static <T> EventSubject<T> create() {
-        return new EventSubject<T>(bufferSize(), true);
+        return new EventSubject<>(bufferSize(), null, true);
     }
 
     /**
@@ -132,16 +131,19 @@ public final class EventSubject<T> extends Subject<T> {
      * @param <T> the value type
      * @param capacityHint the hint to size the internal unbounded buffer
      * @return an EventSubject instance
+     * @throws IllegalArgumentException if {@code capacityHint} is non-positive
      */
     @CheckReturnValue
     @NonNull
     public static <T> EventSubject<T> create(int capacityHint) {
-        return new EventSubject<T>(capacityHint, true);
+        ObjectHelper.verifyPositive(capacityHint, "capacityHint");
+        return new EventSubject<>(capacityHint, null, true);
     }
 
     /**
      * Creates an EventSubject with the given internal buffer capacity hint and a callback for
-     * the case when the single Subscriber cancels its subscription.
+     * the case when the single Subscriber cancels its subscription
+     * or the subject is terminated.
      *
      * <p>The callback, if not null, is called exactly once and
      * non-overlapped with any active replay.
@@ -150,16 +152,21 @@ public final class EventSubject<T> extends Subject<T> {
      * @param capacityHint the hint to size the internal unbounded buffer
      * @param onTerminate the callback to run when the Subject is terminated or cancelled, null not allowed
      * @return an EventSubject instance
+     * @throws NullPointerException if {@code onTerminate} is {@code null}
+     * @throws IllegalArgumentException if {@code capacityHint} is non-positive
      */
     @CheckReturnValue
     @NonNull
     public static <T> EventSubject<T> create(int capacityHint, Runnable onTerminate) {
-        return new EventSubject<T>(capacityHint, onTerminate, true);
+        ObjectHelper.verifyPositive(capacityHint, "capacityHint");
+        Objects.requireNonNull(onTerminate, "onTerminate");
+        return new EventSubject<>(capacityHint, onTerminate, true);
     }
 
     /**
      * Creates an EventSubject with the given internal buffer capacity hint, delay error flag and
-     * a callback for the case when the single Subscriber cancels its subscription.
+     * a callback for the case when the single Observer disposes its {@link Disposable}
+     * or the subject is terminated.
      *
      * <p>The callback, if not null, is called exactly once and
      * non-overlapped with any active replay.
@@ -169,12 +176,16 @@ public final class EventSubject<T> extends Subject<T> {
      * @param onTerminate the callback to run when the Subject is terminated or cancelled, null not allowed
      * @param delayError deliver pending onNext events before onError
      * @return an EventSubject instance
+     * @throws NullPointerException if {@code onTerminate} is {@code null}
+     * @throws IllegalArgumentException if {@code capacityHint} is non-positive
      * @since 2.2
      */
     @CheckReturnValue
     @NonNull
-    public static <T> EventSubject<T> create(int capacityHint, Runnable onTerminate, boolean delayError) {
-        return new EventSubject<T>(capacityHint, onTerminate, delayError);
+    public static <T> EventSubject<T> create(int capacityHint, @NonNull Runnable onTerminate, boolean delayError) {
+        ObjectHelper.verifyPositive(capacityHint, "capacityHint");
+        Objects.requireNonNull(onTerminate, "onTerminate");
+        return new EventSubject<>(capacityHint, onTerminate, delayError);
     }
 
     /**
@@ -191,34 +202,7 @@ public final class EventSubject<T> extends Subject<T> {
     @CheckReturnValue
     @NonNull
     public static <T> EventSubject<T> create(boolean delayError) {
-        return new EventSubject<T>(bufferSize(), delayError);
-    }
-
-
-    /**
-     * Creates an EventSubject with the given capacity hint and delay error flag.
-     * <p>History: 2.0.8 - experimental
-     * @param capacityHint the capacity hint for the internal, unbounded queue
-     * @param delayError deliver pending onNext events before onError
-     * @since 2.2
-     */
-    EventSubject(int capacityHint, boolean delayError) {
-        this.queue = new SpscLinkedArrayQueue<T>(ObjectHelper.verifyPositive(capacityHint, "capacityHint"));
-        this.onTerminate = new AtomicReference<Runnable>();
-        this.delayError = delayError;
-        this.downstream = new AtomicReference<Observer<? super T>>();
-    }
-
-    /**
-     * Creates an EventSubject with the given capacity hint and callback
-     * for when the Subject is terminated normally or its single Subscriber cancels.
-     * @param capacityHint the capacity hint for the internal, unbounded queue
-     * @param onTerminate the callback to run when the Subject is terminated or cancelled, null not allowed
-     * @since 2.0
-     *
-     * */
-    EventSubject(int capacityHint, Runnable onTerminate) {
-        this(capacityHint, onTerminate, true);
+        return new EventSubject<>(bufferSize(), null, delayError);
     }
 
     /**
@@ -231,10 +215,10 @@ public final class EventSubject<T> extends Subject<T> {
      * @since 2.2
      */
     EventSubject(int capacityHint, Runnable onTerminate, boolean delayError) {
-        this.queue = new SpscLinkedArrayQueue<T>(ObjectHelper.verifyPositive(capacityHint, "capacityHint"));
-        this.onTerminate = new AtomicReference<Runnable>(ObjectHelper.requireNonNull(onTerminate, "onTerminate"));
+        this.queue = new SpscLinkedArrayQueue<>(capacityHint);
+        this.onTerminate = new AtomicReference<>(onTerminate);
         this.delayError = delayError;
-        this.downstream = new AtomicReference<Observer<? super T>>();
+        this.downstream = new AtomicReference<>();
     }
 
     @Override
@@ -265,7 +249,7 @@ public final class EventSubject<T> extends Subject<T> {
 
     @Override
     public void onNext(T t) {
-        ObjectHelper.requireNonNull(t, "onNext called with null. Null values are generally not allowed in 2.x operators and sources.");
+        ExceptionHelper.nullCheck(t, "onNext called with a null value.");
         if (done) {
             return;
         }
@@ -275,7 +259,7 @@ public final class EventSubject<T> extends Subject<T> {
 
     @Override
     public void onError(Throwable t) {
-        ObjectHelper.requireNonNull(t, "onError called with null. Null values are generally not allowed in 2.x operators and sources.");
+        ExceptionHelper.nullCheck(t, "onError called with a null Throwable.");
         if (done) {
             RxJavaPlugins.onError(t);
             return;
@@ -420,12 +404,14 @@ public final class EventSubject<T> extends Subject<T> {
     }
 
     @Override
+    @CheckReturnValue
     public boolean hasObservers() {
         return downstream.get() != null;
     }
 
     @Override
     @Nullable
+    @CheckReturnValue
     public Throwable getThrowable() {
         if (done) {
             return error;
@@ -434,11 +420,13 @@ public final class EventSubject<T> extends Subject<T> {
     }
 
     @Override
+    @CheckReturnValue
     public boolean hasThrowable() {
         return done && error != null;
     }
 
     @Override
+    @CheckReturnValue
     public boolean hasComplete() {
         return done && error == null;
     }
@@ -447,7 +435,7 @@ public final class EventSubject<T> extends Subject<T> {
 
 	    volatile boolean disposed;
 
-	    private static final long serialVersionUID = 7926949470189395511L;
+	    private static final long serialVersionUID = 8926949470189395511L;
 
         @Override
         public int requestFusion(int mode) {
@@ -460,7 +448,7 @@ public final class EventSubject<T> extends Subject<T> {
 
         @Nullable
         @Override
-        public T poll() throws Exception {
+        public T poll() {
             return queue.poll();
         }
 

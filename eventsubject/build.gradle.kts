@@ -12,6 +12,6 @@ mavenPublish {
 }
 
 dependencies {
-    implementation("io.reactivex.rxjava2:rxjava:2.2.21")
+    implementation("io.reactivex.rxjava3:rxjava:3.0.13")
     testImplementation("junit:junit:4.13")
 }

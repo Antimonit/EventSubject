@@ -3,7 +3,7 @@ package me.khol.reactive.subjects;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.reactivex.observers.TestObserver;
+import io.reactivex.rxjava3.observers.TestObserver;
 
 public class SubjectsTests {
 
